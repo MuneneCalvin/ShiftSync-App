@@ -17,6 +17,7 @@ export function Navbar() {
     { href: '/dashboard', label: 'Locations', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
     { href: '/swaps', label: 'Swap Requests', roles: ['ADMIN', 'MANAGER'] },
     { href: '/my-shifts', label: 'My Shifts', roles: ['STAFF', 'MANAGER', 'ADMIN'] },
+    { href: '/analytics', label: 'Analytics', roles: ['ADMIN', 'MANAGER'] },
   ];
 
   return (

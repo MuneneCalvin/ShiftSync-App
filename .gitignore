@@ -56,5 +56,9 @@ next-env.d.ts
 *.swo
 *.swn
 *.claude
-
 claude/
+agents/
+
+package-lock.json/
+yarn.lock
+pnpm-lock.yaml
