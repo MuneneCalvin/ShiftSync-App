@@ -57,3 +57,26 @@ export interface ConstraintResult {
   suggestions: Suggestion[];
   projectedWeeklyHours?: number;
 }
+
+export interface SwapRequest {
+  id: string;
+  type: 'SWAP' | 'DROP';
+  status: 'PENDING' | 'ACCEPTED' | 'MANAGER_REVIEW' | 'APPROVED' | 'CANCELLED' | 'EXPIRED';
+  requesterId: string;
+  targetUserId: string | null;
+  shiftId: string;
+  expiresAt: string;
+  createdAt: string;
+  requester: { id: string; name: string; email: string };
+  targetUser: { id: string; name: string; email: string } | null;
+  shift: Shift & { location: Location };
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  read: boolean;
+  createdAt: string;
+}
