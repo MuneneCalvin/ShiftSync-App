@@ -12,7 +12,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     if (!user) {
       router.replace('/login');
     } else {
-      setReady(true);
+      queueMicrotask(() => setReady(true));
     }
   }, [router]);
 

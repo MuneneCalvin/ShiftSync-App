@@ -1,19 +1,18 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { getSocket } from '@/lib/socket';
 
 export function useSocket() {
-  const socketRef = useRef<Socket | null>(null);
+  const [socket] = useState<Socket | null>(() => {
+    // Only initialize on client
+    if (typeof window !== 'undefined') {
+      return getSocket();
+    }
+    return null;
+  });
 
-  useEffect(() => {
-    socketRef.current = getSocket();
-    return () => {
-      // Don't disconnect on unmount — keep connection alive across pages
-    };
-  }, []);
-
-  return socketRef.current ?? getSocket();
+  return socket ?? getSocket();
 }
 
 export function useSocketEvent(event: string, handler: (data: unknown) => void) {
