@@ -23,7 +23,7 @@ interface StaffHoursSummary {
   email: string;
   totalHours: number;
   weeklyBreakdown: { weekOf: string; hours: number }[];
-  saturdayEveningShifts: number;
+  premiumEveningShifts: number;
   desiredHoursPerWeek: number | null;
   hoursVariance: number | null;
 }
@@ -33,7 +33,7 @@ interface FairnessReport {
   locationName: string;
   staff: StaffHoursSummary[];
   fairnessScore: number;
-  saturdayEveningDistribution: { userId: string; name: string; count: number }[];
+  premiumEveningDistribution: { userId: string; name: string; count: number }[];
 }
 
 interface HoursDistributionWeek {
@@ -195,19 +195,19 @@ function FairnessPanel({ locationId }: { locationId: string }) {
       <div>
         <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
           <Calendar className="w-4 h-4" />
-          Saturday Evening Shifts (6 weeks)
+          Fri/Sat Evening Shifts (6 weeks)
         </h4>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="text-left py-2 text-gray-500 font-medium">Staff</th>
-                <th className="text-right py-2 text-gray-500 font-medium">Sat Eve Shifts</th>
+                <th className="text-right py-2 text-gray-500 font-medium">Fri/Sat Eve Shifts</th>
                 <th className="text-right py-2 text-gray-500 font-medium">Total Shifts (approx)</th>
               </tr>
             </thead>
             <tbody>
-              {data.saturdayEveningDistribution.map((row) => (
+              {data.premiumEveningDistribution.map((row) => (
                 <tr key={row.userId} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="py-2 text-gray-800">{row.name}</td>
                   <td className="py-2 text-right">
@@ -225,11 +225,11 @@ function FairnessPanel({ locationId }: { locationId: string }) {
             </tbody>
           </table>
         </div>
-        {data.saturdayEveningDistribution.some((r) => r.count === 0) && (
+        {data.premiumEveningDistribution.some((r) => r.count === 0) && (
           <div className="mt-3 flex items-start gap-2 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
             <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-blue-500" />
             <span>
-              Some staff have <strong>0 Saturday evening shifts</strong> in the past 6 weeks. Consider reassigning for equitable distribution.
+              Some staff have <strong>0 Fri/Sat evening shifts</strong> in the past 6 weeks. Consider reassigning for equitable distribution.
             </span>
           </div>
         )}

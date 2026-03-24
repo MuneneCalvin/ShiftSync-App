@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { api } from '@/lib/api';
@@ -8,7 +8,7 @@ import { AuthGuard } from '@/components/AuthGuard';
 import { Navbar } from '@/components/Navbar';
 import { getStoredUser } from '@/lib/auth';
 import { Shift, SwapRequest } from '@/lib/types';
-import { ArrowLeftRight, X, Loader2 } from 'lucide-react';
+import { ArrowLeftRight, X, Loader2, Download } from 'lucide-react';
 
 function fmt(iso: string, tz: string) {
   const d = toZonedTime(new Date(iso), tz);
@@ -34,6 +34,18 @@ function SwapRequestModal({ shifts, onClose, onCreated }: {
   const [targetUserId, setTargetUserId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const selectedShift = shifts.find((s) => s.id === shiftId);
+
+  // Fetch all staff to populate target dropdown
+  const { data: allUsers } = useQuery<{ id: string; name: string; skills: { skill: string }[] }[]>({
+    queryKey: ['users'],
+    queryFn: () => api.get('/users').then((r) => r.data),
+  });
+  // Filter to staff who share the required skill
+  const eligibleTargets = (allUsers ?? []).filter(
+    (u) => u.skills.some((s) => s.skill === selectedShift?.requiredSkill)
+  );
 
   async function handleSubmit() {
     setLoading(true); setError('');
@@ -78,10 +90,17 @@ function SwapRequestModal({ shifts, onClose, onCreated }: {
           </div>
           {type === 'SWAP' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Target Staff User ID</label>
-              <input value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)}
-                placeholder="Enter user ID to swap with…"
-                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Swap With</label>
+              <select value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">— Select a staff member —</option>
+                {eligibleTargets.map((u) => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+              {eligibleTargets.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1">No other staff share this skill.</p>
+              )}
             </div>
           )}
           {type === 'DROP' && (
@@ -121,6 +140,12 @@ function MyShiftsContent() {
     enabled: !!user,
   });
 
+  const { data: openDrops, refetch: refetchDrops } = useQuery<SwapRequest[]>({
+    queryKey: ['open-drops'],
+    queryFn: () => api.get('/swaps/open-drops').then((r) => r.data),
+    enabled: !!user,
+  });
+
   async function handleCancel(swapId: string) {
     await api.patch(`/swaps/${swapId}/cancel`);
     refetchSwaps();
@@ -129,6 +154,12 @@ function MyShiftsContent() {
   async function handleAccept(swapId: string) {
     await api.patch(`/swaps/${swapId}/accept`);
     refetchSwaps();
+  }
+
+  async function handlePickup(swapId: string) {
+    const { data } = await api.patch(`/swaps/${swapId}/pickup`);
+    if (data.success) { refetchDrops(); refetchSwaps(); }
+    else alert('Cannot pick up: ' + data.violations?.map((v: {message: string}) => v.message).join(', '));
   }
 
   const upcomingShifts: Shift[] = (profile?.assignments ?? []).map((a: { shift: Shift & { location: { name: string; timezone: string } } }) => ({
@@ -191,6 +222,37 @@ function MyShiftsContent() {
                 <button onClick={() => handleAccept(swap.id)}
                   className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-medium transition">
                   Accept Swap
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Open DROP shifts to pick up */}
+      {(openDrops?.length ?? 0) > 0 && (
+        <section className="mb-8">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Available Shifts to Pick Up
+          </h2>
+          <div className="space-y-3">
+            {openDrops!.map((drop) => (
+              <div key={drop.id} className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-900">
+                    {drop.shift.location.name}
+                    <span className="ml-2 text-xs font-normal text-green-700">· {drop.shift.requiredSkill}</span>
+                  </p>
+                  <p className="text-xs text-green-600 mt-0.5">
+                    {fmt(drop.shift.startTime, drop.shift.location.timezone)}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Dropped by {drop.requester.name} · expires {fmt(drop.expiresAt, 'UTC')}
+                  </p>
+                </div>
+                <button onClick={() => handlePickup(drop.id)}
+                  className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition shrink-0">
+                  <Download className="w-3.5 h-3.5" /> Pick Up
                 </button>
               </div>
             ))}

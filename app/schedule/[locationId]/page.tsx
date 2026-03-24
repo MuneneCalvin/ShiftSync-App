@@ -315,12 +315,13 @@ function CreateShiftModal({
 }
 
 // ── Shift Card ────────────────────────────────────────────────────────────────
-function ShiftCard({ shift, location, onAssign, onUnassign, onPublish }: {
+function ShiftCard({ shift, location, onAssign, onUnassign, onPublish, onUnpublish }: {
   shift: Shift;
   location: Location;
   onAssign: (shift: Shift) => void;
   onUnassign: (shiftId: string, userId: string) => void;
   onPublish: (shiftId: string) => void;
+  onUnpublish: (shiftId: string) => void;
 }) {
   const isFull = shift.assignments.length >= shift.headcount;
 
@@ -398,6 +399,12 @@ function ShiftCard({ shift, location, onAssign, onUnassign, onPublish }: {
             Publish
           </button>
         )}
+        {shift.published && (
+          <button onClick={() => onUnpublish(shift.id)}
+            className="flex-1 border border-gray-300 hover:border-red-300 hover:bg-red-50 hover:text-red-700 text-gray-500 text-xs font-semibold py-1.5 rounded-lg transition-colors duration-200">
+            Unpublish
+          </button>
+        )}
       </div>
     </div>
   );
@@ -428,6 +435,11 @@ function ScheduleContent({ locationId }: { locationId: string }) {
 
   async function handlePublish(shiftId: string) {
     await api.patch(`/shifts/${shiftId}/publish`);
+    refetch();
+  }
+
+  async function handleUnpublish(shiftId: string) {
+    await api.patch(`/shifts/${shiftId}/unpublish`);
     refetch();
   }
 
@@ -511,6 +523,7 @@ function ScheduleContent({ locationId }: { locationId: string }) {
                       onAssign={setAssigningShift}
                       onUnassign={handleUnassign}
                       onPublish={handlePublish}
+                      onUnpublish={handleUnpublish}
                     />
                   ))}
                   {dayShifts.length === 0 && (
