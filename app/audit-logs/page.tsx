@@ -6,7 +6,8 @@ import { api } from '@/lib/api';
 import { AuthGuard } from '@/components/AuthGuard';
 import { Navbar } from '@/components/Navbar';
 import { Location } from '@/lib/types';
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Download } from 'lucide-react';
+import { getStoredUser } from '@/lib/auth';
 
 interface AuditLog {
   id: string;
@@ -38,11 +39,15 @@ const ACTION_COLOR: Record<string, string> = {
 const LIMIT = 25;
 
 function AuditLogsContent() {
+  const user = getStoredUser();
+  const isAdmin = user?.role === 'ADMIN';
   const [offset, setOffset] = useState(0);
   const [locationId, setLocationId] = useState('');
   const [action, setAction] = useState('');
   const [search, setSearch] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const { data: locations } = useQuery<Location[]>({
     queryKey: ['locations'],
@@ -74,6 +79,25 @@ function AuditLogsContent() {
   const totalPages = Math.ceil(total / LIMIT);
   const currentPage = Math.floor(offset / LIMIT) + 1;
 
+  function handleExport() {
+    const params = new URLSearchParams();
+    if (locationId) params.set('locationId', locationId);
+    if (action) params.set('action', action);
+    if (startDate) params.set('startDate', startDate);
+    if (endDate) params.set('endDate', endDate);
+    // Trigger download via direct link with token
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    const url = `${process.env.NEXT_PUBLIC_API_URL}/audit-logs/export?${params}`;
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.blob())
+      .then((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `audit-log-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+      });
+  }
+
   function handleFilter() {
     setAppliedSearch(search);
     setOffset(0);
@@ -96,9 +120,17 @@ function AuditLogsContent() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
-        <p className="text-gray-500 text-sm mt-1">Full history of all scheduling actions</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Audit Log</h1>
+          <p className="text-gray-500 text-sm mt-1">Full history of all scheduling actions</p>
+        </div>
+        {isAdmin && (
+          <button onClick={handleExport}
+            className="flex items-center gap-2 bg-gray-800 hover:bg-black text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+            <Download className="w-4 h-4" /> Export CSV
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -118,6 +150,16 @@ function AuditLogsContent() {
             <option value="">All actions</option>
             {allActions.map((a) => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
           </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+            className="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+            className="border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div className="flex-1 min-w-[180px]">
           <label className="block text-xs font-medium text-gray-600 mb-1">Search actor / location</label>

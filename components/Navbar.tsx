@@ -21,6 +21,7 @@ export function Navbar() {
     { href: '/on-duty', label: 'On Duty', roles: ['ADMIN', 'MANAGER'] },
     { href: '/audit-logs', label: 'Audit Log', roles: ['ADMIN', 'MANAGER'] },
     { href: '/analytics', label: 'Analytics', roles: ['ADMIN', 'MANAGER'] },
+    { href: '/settings', label: 'Settings', roles: ['ADMIN', 'MANAGER', 'STAFF'] },
   ];
 
   return (
