@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -30,20 +30,29 @@ function AssignModal({
   const [overrideReason, setOverrideReason] = useState('');
   const [assignError, setAssignError] = useState('');
 
-  async function handleCheck() {
-    if (!userId.trim()) return;
+  // Fetch all staff, filtered to those with the required skill
+  const { data: allUsers } = useQuery<{ id: string; name: string; skills: { skill: string }[] }[]>({
+    queryKey: ['users'],
+    queryFn: () => api.get('/users').then((r) => r.data),
+  });
+  const eligibleStaff = (allUsers ?? []).filter(
+    (u) => u.skills.some((s) => s.skill === shift.requiredSkill)
+  );
+  const alreadyAssigned = new Set(shift.assignments.map((a) => a.userId));
+
+  // Auto-check whenever a user is selected
+  useEffect(() => {
+    if (!userId) { setCheckResult(null); return; }
     setChecking(true);
     setCheckResult(null);
     setAssignError('');
-    try {
-      const { data } = await api.get(`/shifts/${shift.id}/check`, { params: { userId } });
-      setCheckResult(data);
-    } finally {
-      setChecking(false);
-    }
-  }
+    api.get(`/shifts/${shift.id}/check`, { params: { userId } })
+      .then(({ data }) => setCheckResult(data))
+      .finally(() => setChecking(false));
+  }, [userId, shift.id]);
 
   async function handleAssign() {
+    if (!userId) return;
     setAssigning(true);
     setAssignError('');
     try {
@@ -71,8 +80,7 @@ function AssignModal({
   }
 
   function handleSuggestion(suggestion: Suggestion) {
-    setUserId(suggestion.userId);
-    setCheckResult(null);
+    setUserId(suggestion.userId); // dropdown will auto-select + trigger useEffect check
     setOverrideReason('');
   }
 
@@ -98,22 +106,31 @@ function AssignModal({
 
         <div className="p-6 overflow-y-auto flex-1 space-y-5">
           <div className="space-y-1.5">
-            <label className="block text-sm font-semibold text-surface-700">Staff User ID</label>
-            <div className="flex gap-2">
-              <input
+            <label className="block text-sm font-semibold text-surface-700">
+              Select Staff
+              {checking && <Loader2 className="inline w-3.5 h-3.5 ml-2 animate-spin text-brand-500" />}
+            </label>
+            <div className="relative">
+              <select
                 value={userId}
-                onChange={(e) => { setUserId(e.target.value); setCheckResult(null); }}
-                placeholder="Enter staff user ID…"
-                className="flex-1 bg-surface-50 border border-surface-200 rounded-xl px-4 py-2.5 text-sm text-surface-900 placeholder-surface-400 focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-200"
-              />
-              <button
-                onClick={handleCheck}
-                disabled={!userId.trim() || checking}
-                className="bg-surface-100 hover:bg-surface-200 text-surface-700 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 flex items-center gap-2 border border-surface-200"
+                onChange={(e) => { setUserId(e.target.value); setOverrideReason(''); }}
+                className="w-full bg-surface-50 border border-surface-200 rounded-xl pl-4 pr-10 py-2.5 text-sm text-surface-900 focus:outline-none focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 transition-all duration-200 appearance-none"
               >
-                {checking && <Loader2 className="w-4 h-4 animate-spin" />}
-                Check
-              </button>
+                <option value="">— Choose a staff member —</option>
+                {eligibleStaff.map((u) => (
+                  <option key={u.id} value={u.id} disabled={alreadyAssigned.has(u.id)}>
+                    {u.name}{alreadyAssigned.has(u.id) ? ' (already assigned)' : ''}
+                  </option>
+                ))}
+                {eligibleStaff.length === 0 && (
+                  <option disabled>No staff with '{shift.requiredSkill}' skill</option>
+                )}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-surface-400">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
 
